@@ -1,4 +1,3 @@
-
 version: '3.8'
 
 services:
@@ -34,6 +33,8 @@ services:
       REDIS_HOST: redis
     networks:
       - backend
+    ports:
+      - "5000:5000"   # expose Flask app port if needed
 
   nginx:
     build: ./nginx
@@ -45,8 +46,43 @@ services:
       - backend
       - frontend
 
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+  cadvisor:
+    image: google/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - backend
+  
+
+
 volumes:
   pgdata:
+  grafana-data:
 
 networks:
   frontend:

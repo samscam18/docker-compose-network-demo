@@ -1,9 +1,14 @@
-from flask import Flask
+from flask import Flask, Response
 import redis
 import psycopg2
 import os
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
+# Initialize Flask app
 app = Flask(__name__)
+
+# Prometheus metrics
+REQUEST_COUNTER = Counter('app_requests_total', 'Total number of requests')
 
 # Redis connection
 redis_host = os.getenv("REDIS_HOST", "localhost")
@@ -18,8 +23,9 @@ def get_db_connection():
         password=os.getenv("DATABASE_PASSWORD")
     )
 
-@app.route('/')
+@app.route("/")
 def home():
+    REQUEST_COUNTER.inc()
     redis_client.incr("hits")
     hits = redis_client.get("hits")
 
@@ -34,6 +40,10 @@ def home():
         now = f"DB Error: {e}"
 
     return f"Hello from Flask!<br>Redis hits: {hits}<br>Postgres time: {now}"
+
+@app.route("/metrics")
+def metrics():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
